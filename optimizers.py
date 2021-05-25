@@ -15,7 +15,8 @@ def clip_by_global_norm(grads, clip_norm):
 
 def get_optimizer(mesh, loss, params, variable_dtype, inp_var_grads=None):
     """Creates and returns an optimizer training op."""
-    global_step = tf.train.get_or_create_global_step()
+    step_shift = params.get('step_shift', 0)
+    global_step = tf.train.get_or_create_global_step() - step_shift
 
     learning_rate = tf.constant(value=params["lr"], shape=[], dtype=variable_dtype.slice_dtype)
     clip_value = mtf.constant(mesh, params["gradient_clipping"], dtype=variable_dtype.slice_dtype)
@@ -29,7 +30,7 @@ def get_optimizer(mesh, loss, params, variable_dtype, inp_var_grads=None):
     var_grads_fp = [mtf.cast(v, variable_dtype.slice_dtype) for v in var_grads]
 
     # decrease LR to final lr (lr*0.1) by this step - defaults to train_steps
-    end_step = params.get("lr_decay_end", params["train_steps"]) 
+    end_step = params.get("lr_decay_end", params["train_steps"]) - step_shift
 
     if params["lr_decay"] == "linear":
         learning_rate = tf.train.polynomial_decay(
